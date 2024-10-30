@@ -3,50 +3,45 @@ from PIL import Image
 import os
 from tensorflow import keras
 
+# 加载预训练的模型
+try:
+    model = keras.models.load_model('model.h5')
+except Exception as e:
+    print(f"加载模型失败: {e}")
+    exit(1)
 
-#(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+# 定义图像处理和预测函数
+def predict_digit(image_path):
+    try:
+        # 加载图像并转换为灰度
+        img = Image.open(image_path).convert('L')
+        img = img.resize((28, 28))  # 确保图像尺寸为 28x28
+        img = np.array(img, dtype=np.float32)  # 转换为 numpy 数组，指定数据类型为 float32
 
-## modify the training data
-#x_train = x_train.reshape((-1, 28, 28, 1))
-#x_train = x_train / 255.0
+        # 正则化图像数据
+        img = img / 255.0
 
-## build the neural network model
-#model = keras.Sequential([
-#    keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
-#    keras.layers.MaxPooling2D((2, 2)),
-#    keras.layers.Flatten(),
-#    keras.layers.Dense(10, activation='softmax')
-#])
+        # 调整图像形状
+        img = img.reshape((1, 28, 28, 1))
 
-## compile the model
-#model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        # 使用模型进行预测
+        pred = model.predict(img)
+        digit = np.argmax(pred)
+        return digit
+    except Exception as e:
+        print(f"处理图像 {image_path} 时出错: {e}")
+        return None
 
-## train the model
-#model.fit(x_train, y_train, epochs=5, validation_data=(x_test, y_test))
-
-## save the model to a file
-#model.save('model.h5')
-
-
-# load the model from a file
-model = keras.models.load_model('model.h5')
+# 处理 img 文件夹中的所有 PNG 文件
+if not os.path.exists('img'):
+    print("未找到 'img' 文件夹，请确保包含 PNG 图像的文件夹名为 'img'")
+    exit(1)
 
 for file_name in os.listdir('img'):
     if file_name.endswith(".png"):
-        # load and convert the image to a numpy array
-        img = Image.open(f'img/{file_name}').convert('L')
-        img = img.resize((28, 28))
-        img = np.array(img)
-
-        # normalize the image data
-        img = img / 255.0
-
-        # reshape the image to a shape accepted by the model
-        img = img.reshape((-1, 28, 28, 1))
-
-        # make a prediction on the image
-        pred = model.predict(img)
-        digit = np.argmax(pred)
-
-        print(f"Recognized digit for file {file_name} is: {digit}")
-input("Press Enter to end...")
+        file_path = os.path.join('img', file_name)
+        digit = predict_digit(file_path)
+        if digit is not None:
+            print(f"文件 {file_name} 识别的数字是: {digit}")
+        else:
+            print(f"文件 {file_name} 无法识别")
